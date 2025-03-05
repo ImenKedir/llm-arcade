@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Arcade</title>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        retro: {
+                            bg: '#F6F6EF',
+                            header: '#FF6600',
+                            text: '#222222',
+                            link: '#0000EE',
+                            accent: '#8B4513',
+                            border: '#DDDDDD',
+                            card: '#FFFAF0'
+                        }
+                    },
+                    fontFamily: {
+                        'pixel': ['"Press Start 2P"', 'monospace', 'system-ui'],
+                        'retro': ['Courier', 'monospace', 'system-ui']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts - Press Start 2P for 8-bit feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        /* Retro styling */
+        body {
+            font-family: 'Courier', monospace;
+            background-color: #F6F6EF;
+            color: #222222;
+        }
+        
+        /* Pixelated borders */
+        .pixel-border {
+            box-shadow: 
+                -3px 0 0 0 #000,
+                3px 0 0 0 #000,
+                0 -3px 0 0 #000,
+                0 3px 0 0 #000;
+        }
+        
+        /* Scanlines effect */
+        .scanlines {
+            position: relative;
+        }
+        .scanlines::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(0, 0, 0, 0) 0%,
+                rgba(0, 0, 0, 0.1) 50%,
+                rgba(0, 0, 0, 0) 100%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0.2;
+        }
+    </style>
+</head>
+<body class="bg-retro-bg min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-pixel text-retro-header mb-2 tracking-wider">LLM ARCADE</h1>
+            <div class="w-full h-1 bg-retro-header mb-2"></div>
+            <p class="text-retro-text font-retro">
+                A collection of arcade-style LLM evaluations built on top of 
+                <a href="https://gymnasium.farama.org/" class="text-retro-link hover:text-retro-accent">Gymnasium</a> using 
+                <a href="https://openrouter.ai/" class="text-retro-link hover:text-retro-accent">OpenRouter</a>,
+                <a href="https://fastapi.tiangolo.com/" class="text-retro-link hover:text-retro-accent">FastAPI</a> &
+                <a href="https://htmx.org/" class="text-retro-link hover:text-retro-accent">HTMX</a>
+            </p>
+        </header>
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+        <footer class="mt-12 pt-8 border-t border-retro-border text-center text-retro-text text-sm font-retro">
+            <p class="mb-4">Built by claude sonnet 3.7 with the help of Imen Kedir</p>
+            <div class="flex justify-center space-x-6">
+                <a href="https://www.linkedin.com/in/imenkedir/" target="_blank" rel="noopener noreferrer" class="text-retro-link hover:text-retro-accent transition-colors duration-300">LinkedIn</a>
+                <a href="https://github.com/ImenKedir" target="_blank" rel="noopener noreferrer" class="text-retro-link hover:text-retro-accent transition-colors duration-300">GitHub</a>
+                <a href="https://twitter.com/ImenKedir" target="_blank" rel="noopener noreferrer" class="text-retro-link hover:text-retro-accent transition-colors duration-300">Twitter</a>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

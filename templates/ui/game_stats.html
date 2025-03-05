@@ -1,0 +1,52 @@
+{% macro game_stats(show_draws=true) %}
+<h3 class="text-lg font-pixel mb-3 text-retro-accent">GAME STATS</h3>
+
+<!-- Step Counter -->
+<div class="mb-4">
+    <div class="text-sm font-bold font-retro mb-1">Steps</div>
+    <div class="flex items-center">
+        <div id="step-count" class="text-3xl font-pixel mr-2 text-retro-text">0</div>
+    </div>
+</div>
+
+<!-- Games Counter -->
+<div class="mb-4">
+    <div class="text-sm font-bold font-retro mb-1">Games Completed</div>
+    <div id="games-completed" class="text-3xl font-pixel text-retro-text">0</div>
+</div>
+
+<!-- Success/Failure Stats -->
+{% if show_draws %}
+<div class="grid grid-cols-3 gap-4 mb-4">
+    <div>
+        <div class="text-sm font-bold font-retro mb-1">Wins</div>
+        <div id="wins-count" class="text-2xl font-pixel text-retro-link">0</div>
+    </div>
+    <div>
+        <div class="text-sm font-bold font-retro mb-1">Losses</div>
+        <div id="losses-count" class="text-2xl font-pixel text-retro-header">0</div>
+    </div>
+    <div>
+        <div class="text-sm font-bold font-retro mb-1">Draws</div>
+        <div id="draws-count" class="text-2xl font-pixel text-retro-text">0</div>
+    </div>
+</div>
+{% else %}
+<div class="grid grid-cols-2 gap-4 mb-4">
+    <div>
+        <div class="text-sm font-bold font-retro mb-1">Successes</div>
+        <div id="success-count" class="text-2xl font-pixel text-retro-link">0</div>
+    </div>
+    <div>
+        <div class="text-sm font-bold font-retro mb-1">Failures</div>
+        <div id="failure-count" class="text-2xl font-pixel text-retro-header">0</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Total Reward (for games that use rewards) -->
+<div class="mb-4">
+    <div class="text-sm font-bold font-retro mb-1">Total Reward</div>
+    <div id="total-reward" class="text-3xl font-pixel text-retro-text">0</div>
+</div>
+{% endmacro %}

@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+
+{% from "ui/game_controls.html" import game_controls %}
+{% from "ui/game_log.html" import game_log %}
+{% from "ui/game_stats.html" import game_stats %}
+{% from "ui/llm_reasoning.html" import llm_reasoning %}
+{% from "ui/styles.html" import game_styles %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-retro-card rounded-lg shadow-md overflow-hidden p-6 pixel-border">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-pixel text-retro-header">CLIFF WALKING</h2>
+            <a href="https://gymnasium.farama.org/environments/toy_text/cliff_walking/" class="text-retro-link hover:text-retro-accent flex items-center font-retro" target="_blank">
+                <span>View Gymnasium Docs</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+            </a>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Game Display -->
+            <div class="bg-retro-bg border-2 border-retro-accent rounded-lg p-4 scanlines">
+                <h3 class="text-lg font-pixel mb-3 text-retro-accent">GAME STATE</h3>
+                
+                <!-- Grid Display -->
+                <div id="grid-display" class="font-mono text-sm whitespace-pre mb-4 bg-black text-retro-accent p-3 rounded border-2 border-retro-header">
+                    <div class="animate-pulse">Loading cliff walking environment...</div>
+                </div>
+                
+                <!-- Legend -->
+                <div class="mb-4 text-xs grid grid-cols-5 gap-1 font-retro">
+                    <div class="flex items-center">
+                        <span class="inline-block w-4 h-4 bg-retro-header mr-1"></span>
+                        <span>X: Agent</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="inline-block w-4 h-4 bg-retro-accent mr-1"></span>
+                        <span>S: Start</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="inline-block w-4 h-4 bg-retro-link mr-1"></span>
+                        <span>G: Goal</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="inline-block w-4 h-4 bg-retro-header mr-1 opacity-50"></span>
+                        <span>C: Cliff</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="inline-block w-4 h-4 bg-black mr-1 border border-retro-border"></span>
+                        <span>.: Empty</span>
+                    </div>
+                </div>
+                
+                <!-- Game Info -->
+                <div id="game-info" class="grid grid-cols-2 gap-2 text-sm font-retro">
+                    <div class="font-bold text-retro-header">POSITION:</div>
+                    <div id="position">-</div>
+                    <div class="font-bold text-retro-header">ACTION:</div>
+                    <div id="action">-</div>
+                    <div class="font-bold text-retro-header">REWARD:</div>
+                    <div id="reward">-</div>
+                    <div class="font-bold text-retro-header">STATUS:</div>
+                    <div id="status">-</div>
+                    <div class="font-bold text-retro-header">GAME:</div>
+                    <div id="game-counter">-</div>
+                </div>
+                
+                <!-- LLM Reasoning -->
+                {{ llm_reasoning() }}
+            </div>
+            
+            <!-- Game Controls and Stats -->
+            <div class="bg-retro-bg border-2 border-retro-accent rounded-lg p-4 scanlines">
+                {{ game_stats(show_draws=false) }}
+                
+                <!-- Game Controls -->
+                {{ game_controls(num_games=10, min_games=1, max_games=50, button_text="START GAME") }}
+            </div>
+        </div>
+        
+        <!-- Game Log -->
+        <div class="mt-6 bg-retro-bg border-2 border-retro-accent rounded-lg p-4 scanlines">
+            <h3 class="text-lg font-pixel mb-3 text-retro-accent">GAME LOG</h3>
+            <div id="game-log" class="bg-white border-2 border-black rounded-none p-4 h-48 overflow-y-auto text-sm font-retro">
+                <div class="text-retro-text">Game log will appear here...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ game_styles() }}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Elements
+        const gridDisplay = document.getElementById('grid-display');
+        const positionDisplay = document.getElementById('position');
+        const actionDisplay = document.getElementById('action');
+        const rewardDisplay = document.getElementById('reward');
+        const statusDisplay = document.getElementById('status');
+        const gameCounterDisplay = document.getElementById('game-counter');
+        const stepCountDisplay = document.getElementById('step-count');
+        const gamesPlayedDisplay = document.getElementById('games-completed');
+        const successesDisplay = document.getElementById('success-count');
+        const failuresDisplay = document.getElementById('failure-count');
+        const totalRewardDisplay = document.getElementById('total-reward');
+        const llmReasoningDisplay = document.getElementById('llm-reasoning');
+        const startStreamBtn = document.getElementById('stream-button');
+        const numGamesSlider = document.getElementById('num-games');
+        const numGamesValue = document.getElementById('num-games-value');
+        const testModeToggle = document.getElementById('use-test-mode');
+        const gameLog = document.getElementById('game-log');
+        
+        // Event source
+        let eventSource = null;
+        
+        // Function to render the grid with colors
+        function renderGrid(grid) {
+            if (!grid) return;
+            
+            gridDisplay.innerHTML = '';
+            
+            // Check if grid is an array (from backend) or a string
+            const lines = Array.isArray(grid) ? grid : grid.trim().split('\n');
+            
+            for (const line of lines) {
+                const lineDiv = document.createElement('div');
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    const span = document.createElement('span');
+                    span.textContent = char;
+                    
+                    // Apply colors based on character
+                    if (char === 'X') {
+                        span.className = 'text-retro-header font-bold';
+                    } else if (char === 'S') {
+                        span.className = 'text-retro-accent font-bold';
+                    } else if (char === 'G') {
+                        span.className = 'text-retro-link font-bold';
+                    } else if (char === 'C') {
+                        span.className = 'text-retro-header opacity-50 font-bold';
+                    }
+                    
+                    lineDiv.appendChild(span);
+                }
+                
+                gridDisplay.appendChild(lineDiv);
+            }
+        }
+        
+        // Function to update the display with game state
+        function updateDisplay(data) {
+            if (!data) return;
+            
+            // Check if data contains an error message
+            if (data.error) {
+                addLogEntry(`Error: ${data.error}`, 'error');
+                return;
+            }
+            
+            // Check if data contains stats update
+            if (data.stats) {
+                updateStats(data.stats);
+                return;
+            }
+            
+            // Check if data indicates game completion
+            if (data.completed) {
+                addLogEntry('Game completed!', 'success');
+                return;
+            }
+            
+            // Handle normal game state update
+            const gameState = data;
+            
+            // Update grid
+            if (gameState.grid) {
+                renderGrid(gameState.grid);
+            }
+            
+            // Update position
+            if (gameState.position !== undefined) {
+                if (typeof gameState.position === 'object') {
+                    positionDisplay.textContent = `Row: ${gameState.position.row}, Col: ${gameState.position.col}`;
+                } else {
+                    positionDisplay.textContent = gameState.position;
+                }
+            }
+            
+            // Update action
+            if (gameState.action !== undefined) {
+                actionDisplay.textContent = gameState.action;
+            }
+            
+            // Update reward
+            if (gameState.reward !== undefined) {
+                rewardDisplay.textContent = gameState.reward;
+            }
+            
+            // Update status
+            if (gameState.status !== undefined) {
+                statusDisplay.textContent = gameState.status;
+                if (gameState.status.includes('Success')) {
+                    statusDisplay.className = 'font-medium text-retro-accent';
+                } else if (gameState.status.includes('Failure')) {
+                    statusDisplay.className = 'font-medium text-retro-header';
+                } else {
+                    statusDisplay.className = 'font-medium';
+                }
+            } else if (gameState.terminated !== undefined) {
+                statusDisplay.textContent = gameState.terminated ? 'DONE' : 'PLAYING';
+                statusDisplay.className = gameState.terminated ? 'font-medium text-retro-accent' : 'font-medium';
+            }
+            
+            // Update game counter
+            if (gameState.game_number !== undefined && gameState.total_games !== undefined) {
+                gameCounterDisplay.textContent = `${gameState.game_number} / ${gameState.total_games}`;
+            }
+            
+            // Update step count
+            if (gameState.step_count !== undefined) {
+                stepCountDisplay.textContent = gameState.step_count;
+            }
+            
+            // Update LLM reasoning
+            if (gameState.llm_reasoning) {
+                llmReasoningDisplay.innerHTML = '';
+                const reasoningPara = document.createElement('p');
+                reasoningPara.textContent = gameState.llm_reasoning;
+                reasoningPara.className = 'text-retro-text';
+                llmReasoningDisplay.appendChild(reasoningPara);
+            }
+            
+            // Add to log if needed
+            if (gameState.log_message) {
+                addLogEntry(gameState.log_message, gameState.log_type || 'info');
+            } else if (gameState.action && !gameState.action.includes('None')) {
+                // Log the action taken
+                addLogEntry(`Action: ${gameState.action}`, 'info');
+            }
+            
+            // Log game state changes
+            if (gameState.status === 'Success') {
+                addLogEntry('Success! Reached the goal!', 'success');
+            } else if (gameState.status && gameState.status.includes('Failure')) {
+                addLogEntry(`Failed: ${gameState.status}`, 'error');
+            }
+        }
+        
+        // Function to handle game over
+        function handleGameOver(stats) {
+            addLogEntry(`Game over. Final stats: ${stats.successes} successes, ${stats.failures} failures, total reward: ${stats.total_reward}`, 'info');
+            updateStats(stats);
+        }
+        
+        // Function to update statistics
+        function updateStats(stats) {
+            if (!stats) return;
+            
+            if (stats.games_played !== undefined) {
+                gamesPlayedDisplay.textContent = stats.games_played;
+            }
+            
+            if (stats.successes !== undefined) {
+                successesDisplay.textContent = stats.successes;
+            }
+            
+            if (stats.failures !== undefined) {
+                failuresDisplay.textContent = stats.failures;
+            }
+            
+            if (stats.total_reward !== undefined) {
+                totalRewardDisplay.textContent = stats.total_reward;
+            }
+        }
+        
+        // Function to add log entry - local implementation to ensure it works
+        function addLogEntry(message, type = 'info') {
+            if (!gameLog) return;
+            
+            const stepText = stepCountDisplay ? `[Step ${stepCountDisplay.textContent}] ` : '';
+            
+            const entry = document.createElement('div');
+            entry.className = `mb-1 ${
+                type === 'success' ? 'text-retro-link' : 
+                type === 'error' ? 'text-retro-header' : 
+                type === 'draw' ? 'text-retro-text' : 
+                'text-retro-text'
+            }`;
+            entry.textContent = `${stepText}${message}`;
+            gameLog.appendChild(entry);
+            gameLog.scrollTop = gameLog.scrollHeight;
+            
+            console.log(`Log: ${message} (${type})`); // Debug logging
+        }
+        
+        // Function to start a new game stream
+        function startGameStream() {
+            // Close any existing event source
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            
+            // Reset UI
+            stepCountDisplay.textContent = '0';
+            
+            // Clear and initialize game log
+            if (gameLog) {
+                gameLog.innerHTML = '';
+                addLogEntry('Starting new cliff walking game stream...', 'info');
+            } else {
+                console.error('Game log element not found');
+            }
+            
+            // Get number of games and test mode
+            const numGames = numGamesSlider.value;
+            const testMode = testModeToggle.checked;
+            
+            // Create URL with query parameters
+            const url = `/cliff_walking/stream?num_games=${numGames}&test=${testMode}`;
+            
+            // Create event source
+            eventSource = new EventSource(url);
+            
+            // Handle game state updates
+            eventSource.addEventListener('game_state', function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    updateDisplay(data);
+                } catch (error) {
+                    console.error('Error parsing game state:', error);
+                    addLogEntry('Error parsing game state data', 'error');
+                }
+            });
+            
+            // Handle game over
+            eventSource.addEventListener('game_over', function(event) {
+                try {
+                    const stats = JSON.parse(event.data);
+                    handleGameOver(stats);
+                } catch (error) {
+                    console.error('Error parsing game over data:', error);
+                    addLogEntry('Error parsing game over data', 'error');
+                }
+            });
+            
+            // Handle errors from backend
+            eventSource.addEventListener('error', function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    addLogEntry(`Error: ${data.error}`, 'error');
+                    closeEventSource();
+                } catch (error) {
+                    console.error('Error parsing error data:', error);
+                    addLogEntry('Error in game stream. Check console for details.', 'error');
+                    closeEventSource();
+                }
+            });
+            
+            // Handle general EventSource errors
+            eventSource.onerror = function(event) {
+                console.error('SSE Error:', event);
+                addLogEntry('Error in game stream connection. Check console for details.', 'error');
+                closeEventSource();
+            };
+            
+            // Handle stream end
+            eventSource.addEventListener('stream_end', function() {
+                addLogEntry('Game stream completed.', 'info');
+                closeEventSource();
+            });
+            
+            // Update button state
+            startStreamBtn.textContent = 'STOP GAME';
+            startStreamBtn.classList.add('bg-retro-header');
+            startStreamBtn.classList.remove('bg-retro-accent');
+            
+            // Change button to stop stream
+            startStreamBtn.removeEventListener('click', startGameStream);
+            startStreamBtn.addEventListener('click', closeEventSource);
+        }
+        
+        // Function to close event source and reset UI
+        function closeEventSource() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            
+            // Reset button
+            startStreamBtn.textContent = 'START GAME';
+            startStreamBtn.classList.remove('bg-retro-header');
+            startStreamBtn.classList.add('bg-retro-accent');
+            
+            // Change button back to start stream
+            startStreamBtn.removeEventListener('click', closeEventSource);
+            startStreamBtn.addEventListener('click', startGameStream);
+            
+            addLogEntry('Game stream stopped.', 'info');
+        }
+        
+        // Event listeners
+        startStreamBtn.addEventListener('click', startGameStream);
+    });
+</script>
+{% endblock %}

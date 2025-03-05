@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block content %}
+{# Import UI components #}
+{% from "ui/game_controls.html" import game_controls %}
+{% from "ui/game_stats.html" import game_stats %}
+{% from "ui/game_log.html" import game_log %}
+{% from "ui/llm_reasoning.html" import llm_reasoning %}
+{% from "ui/styles.html" import game_styles %}
+
+<div class="max-w-4xl mx-auto">
+    <div class="bg-retro-card border border-retro-border rounded-none shadow-md overflow-hidden p-6 scanlines">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-pixel text-retro-header">BLACKJACK</h2>
+            <a href="https://gymnasium.farama.org/environments/toy_text/blackjack/" class="text-retro-link hover:underline flex items-center font-retro" target="_blank">
+                <span>View Gymnasium Docs</span>
+                <span class="ml-1">→</span>
+            </a>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Game Display -->
+            <div class="bg-retro-bg border-2 border-retro-accent rounded-lg p-4 scanlines">
+                <h3 class="text-lg font-pixel mb-3 text-retro-accent">GAME STATE</h3>
+                
+                <!-- Card Table -->
+                <div id="blackjack-game" class="mb-6 bg-retro-card border-2 border-black rounded-none p-4 shadow-inner">
+                    <!-- Dealer Area -->
+                    <div class="mb-4">
+                        <div class="font-retro mb-1">Dealer's Card</div>
+                        <div class="flex justify-center">
+                            <div class="bg-white border-2 border-black rounded-none w-16 h-24 flex items-center justify-center m-1">
+                                <span id="stream-dealer-card" class="text-2xl font-pixel">-</span>
+                            </div>
+                            <div class="bg-gray-300 border-2 border-black rounded-none w-16 h-24 flex items-center justify-center m-1">
+                                <span class="text-gray-500 font-pixel">?</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Player Area -->
+                    <div>
+                        <div class="font-retro mb-1">Player's Hand</div>
+                        <div class="flex justify-center">
+                            <div class="bg-white border-2 border-black rounded-none w-16 h-24 flex items-center justify-center m-1">
+                                <span id="stream-player-score" class="text-2xl font-pixel">-</span>
+                            </div>
+                            <div id="ace-card" class="bg-white border-2 border-black rounded-none w-16 h-24 flex items-center justify-center m-1 hidden">
+                                <span class="text-2xl font-pixel text-retro-header">A</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Game Info -->
+                <div id="game-info" class="grid grid-cols-2 gap-2 text-sm font-retro">
+                    <div class="font-bold">Player Score:</div>
+                    <div id="player-score">-</div>
+                    
+                    <div class="font-bold">Dealer Card:</div>
+                    <div id="dealer-card">-</div>
+                    
+                    <div class="font-bold">Usable Ace:</div>
+                    <div id="usable-ace">-</div>
+                    
+                    <div class="font-bold">Last Action:</div>
+                    <div id="last-action">-</div>
+                    
+                    <div class="font-bold">Status:</div>
+                    <div id="status" class="font-medium">Waiting to start</div>
+                    
+                    <div class="font-bold">Game:</div>
+                    <div id="game-counter">0 / 0</div>
+                </div>
+                
+                <!-- LLM Reasoning Component -->
+                {{ llm_reasoning() }}
+            </div>
+            
+            <!-- Game Stats -->
+            <div class="bg-retro-bg border-2 border-retro-accent rounded-lg p-4 scanlines">
+                <!-- Game Stats Component -->
+                {{ game_stats(show_draws=true) }}
+                
+                <!-- Game Controls Component -->
+                {{ game_controls(num_games=10, min_games=1, max_games=100, button_text="START GAME") }}
+            </div>
+        </div>
+        
+        <!-- Game Log Component -->
+        {{ game_log() }}
+    </div>
+</div>
+
+<!-- Game Styles Component -->
+{{ game_styles() }}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Elements
+        const streamButton = document.getElementById('stream-button');
+        const stepCount = document.getElementById('step-count');
+        const gamesCompleted = document.getElementById('games-completed');
+        const winsCount = document.getElementById('wins-count');
+        const lossesCount = document.getElementById('losses-count');
+        const drawsCount = document.getElementById('draws-count');
+        const streamPlayerScore = document.getElementById('stream-player-score');
+        const streamDealerCard = document.getElementById('stream-dealer-card');
+        const playerScore = document.getElementById('player-score');
+        const dealerCard = document.getElementById('dealer-card');
+        const usableAce = document.getElementById('usable-ace');
+        const lastAction = document.getElementById('last-action');
+        const status = document.getElementById('status');
+        const gameCounter = document.getElementById('game-counter');
+        const aceCard = document.getElementById('ace-card');
+        const llmReasoning = document.getElementById('llm-reasoning');
+        
+        // Track stats
+        let stats = {
+            wins: 0,
+            losses: 0,
+            draws: 0,
+            total: 0
+        };
+        
+        let eventSource = null;
+        
+        // Function to start streaming
+        function startStreaming() {
+            // Reset stats
+            stats = {
+                wins: 0,
+                losses: 0,
+                draws: 0,
+                total: 0
+            };
+            
+            // Reset UI elements
+            stepCount.textContent = '0';
+            gamesCompleted.textContent = '0';
+            winsCount.textContent = '0';
+            lossesCount.textContent = '0';
+            drawsCount.textContent = '0';
+            streamPlayerScore.textContent = '-';
+            streamDealerCard.textContent = '-';
+            playerScore.textContent = '-';
+            dealerCard.textContent = '-';
+            usableAce.textContent = '-';
+            lastAction.textContent = '-';
+            status.textContent = 'Starting...';
+            status.className = 'font-medium';
+            aceCard.classList.add('hidden');
+            
+            // Clear game log
+            const gameLog = document.getElementById('game-log');
+            gameLog.innerHTML = '';
+            addLogEntry('Starting new game session...', 'info');
+            
+            // Close existing event source if any
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            // Get number of games
+            const numGames = document.getElementById('num-games').value;
+            // Get test mode
+            const useTestMode = document.getElementById('use-test-mode').checked;
+            
+            // Update button state
+            streamButton.disabled = true;
+            streamButton.textContent = 'RUNNING...';
+            streamButton.classList.add('opacity-50');
+            
+            // Create new event source
+            const url = `/blackjack/stream?num_games=${numGames}&test=${useTestMode}`;
+            eventSource = new EventSource(url);
+            
+            // Event listeners
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                updateGameState(data);
+            };
+            
+            eventSource.onerror = function(error) {
+                console.error('EventSource error:', error);
+                addLogEntry('Error in game stream. Check console for details.', 'error');
+                eventSource.close();
+                streamButton.disabled = false;
+                streamButton.textContent = 'START GAME';
+                streamButton.classList.remove('opacity-50');
+            };
+            
+            eventSource.addEventListener('close', function(event) {
+                eventSource.close();
+                streamButton.disabled = false;
+                streamButton.textContent = 'START GAME';
+                streamButton.classList.remove('opacity-50');
+                addLogEntry('Game session completed.', 'success');
+            });
+        }
+        
+        // Function to update game state
+        function updateGameState(data) {
+            // Check if data contains an error
+            if (data.error) {
+                addLogEntry(`Error: ${data.error}`, 'error');
+                return;
+            }
+            
+            // Check if this is a stats update
+            if (data.stats) {
+                // Update game statistics from stats object
+                if (data.stats.games_played !== undefined) {
+                    gamesCompleted.textContent = data.stats.games_played.toString();
+                }
+                if (data.stats.wins !== undefined) {
+                    winsCount.textContent = data.stats.wins.toString();
+                }
+                if (data.stats.losses !== undefined) {
+                    lossesCount.textContent = data.stats.losses.toString();
+                }
+                if (data.stats.draws !== undefined) {
+                    drawsCount.textContent = data.stats.draws.toString();
+                }
+                
+                // Check if this is a completion message
+                if (data.completed) {
+                    addLogEntry('All games completed!', 'success');
+                }
+                
+                return;
+            }
+            
+            // Update step count if available
+            if (data.step_count !== undefined) {
+                stepCount.textContent = data.step_count.toString();
+            }
+            
+            // Update game counter if available
+            if (data.game_number !== undefined && data.total_games !== undefined) {
+                gameCounter.textContent = `${data.game_number} / ${data.total_games}`;
+            }
+            
+            // Update player score display if available
+            if (data.player_score !== undefined) {
+                streamPlayerScore.textContent = data.player_score.toString();
+                playerScore.textContent = data.player_score.toString();
+            }
+            
+            // Update dealer card display if available
+            if (data.dealer_card !== undefined) {
+                streamDealerCard.textContent = data.dealer_card.toString();
+                dealerCard.textContent = data.dealer_card.toString();
+            }
+            
+            // Update usable ace if available
+            if (data.usable_ace !== undefined) {
+                usableAce.textContent = data.usable_ace === "Yes" ? "Yes" : "No";
+                if (data.usable_ace === "Yes") {
+                    aceCard.classList.remove('hidden');
+                } else {
+                    aceCard.classList.add('hidden');
+                }
+            }
+            
+            // Update last action if available
+            if (data.action !== undefined) {
+                lastAction.textContent = data.action;
+            }
+            
+            // Update status if available
+            if (data.terminated !== undefined) {
+                if (data.terminated) {
+                    if (data.reward > 0) {
+                        status.textContent = 'Win!';
+                        status.className = 'font-medium text-retro-link';
+                        addLogEntry('Player wins!', 'success');
+                    } else if (data.reward < 0) {
+                        status.textContent = 'Loss!';
+                        status.className = 'font-medium text-retro-header';
+                        addLogEntry('Player loses!', 'error');
+                    } else {
+                        status.textContent = 'Draw!';
+                        status.className = 'font-medium text-retro-text';
+                        addLogEntry('Game ended in a draw.', 'draw');
+                    }
+                } else {
+                    status.textContent = 'In Progress';
+                    status.className = 'font-medium';
+                }
+            }
+            
+            // Update LLM reasoning if available
+            if (data.llm_reasoning) {
+                llmReasoning.innerHTML = '';
+                const reasoningText = document.createElement('div');
+                reasoningText.textContent = data.llm_reasoning;
+                llmReasoning.appendChild(reasoningText);
+            }
+            
+            // Add log entry for action if available
+            if (data.action !== undefined && !data.terminated) {
+                const actionText = `Player ${data.action}`;
+                addLogEntry(actionText, 'info');
+            }
+        }
+        
+        // Event listeners
+        streamButton.addEventListener('click', startStreaming);
+    });
+</script>
+{% endblock %}

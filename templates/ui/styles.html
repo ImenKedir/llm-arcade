@@ -1,0 +1,38 @@
+{% macro game_styles() %}
+<style>
+    /* Toggle Switch Styles */
+    .toggle-checkbox:checked {
+        right: 0;
+        border-color: #FF6600;
+    }
+    .toggle-checkbox:checked + .toggle-label {
+        background-color: #FF6600;
+    }
+    .toggle-label {
+        transition: background-color 0.2s ease;
+    }
+    
+    /* Custom slider styling */
+    input[type=range] {
+        -webkit-appearance: none;
+        height: 8px;
+        background: #DDDDDD;
+        border: 2px solid #000;
+    }
+    
+    input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        background: #FF6600;
+        border: 2px solid #000;
+        cursor: pointer;
+    }
+    
+    /* Pixelated text */
+    .pixel-text {
+        font-family: 'Press Start 2P', monospace;
+        letter-spacing: 1px;
+    }
+</style>
+{% endmacro %}

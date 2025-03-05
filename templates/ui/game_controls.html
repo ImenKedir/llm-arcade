@@ -1,0 +1,45 @@
+{% macro game_controls(num_games=10, min_games=1, max_games=100, button_text="START GAME") %}
+<div class="mb-6">
+    <h4 class="text-md font-pixel mb-2 text-retro-accent">SETTINGS</h4>
+    
+    <!-- Number of Games Slider -->
+    <div class="mb-4">
+        <label for="num-games" class="block text-sm font-bold font-retro mb-1">Number of Games: <span id="num-games-value">{{ num_games }}</span></label>
+        <input type="range" id="num-games" name="num-games" min="{{ min_games }}" max="{{ max_games }}" value="{{ num_games }}" 
+               class="w-full h-2 bg-retro-border rounded-none appearance-none cursor-pointer">
+    </div>
+    
+    <!-- Test Mode Toggle -->
+    <div class="flex items-center">
+        <label for="use-test-mode" class="mr-2 text-sm font-bold font-retro">Test Mode (Random Actions):</label>
+        <div class="relative inline-block w-10 mr-2 align-middle select-none">
+            <input type="checkbox" id="use-test-mode" name="use-test-mode" 
+                   class="toggle-checkbox absolute block w-6 h-6 rounded-none bg-white border-2 border-black appearance-none cursor-pointer"/>
+            <label for="use-test-mode" 
+                   class="toggle-label block overflow-hidden h-6 rounded-none bg-retro-border cursor-pointer"></label>
+        </div>
+    </div>
+</div>
+
+<!-- Controls -->
+<div class="mt-6">
+    <button id="stream-button" 
+            class="w-full px-4 py-2 bg-retro-header text-white font-pixel rounded-none border-2 border-black hover:bg-retro-accent focus:outline-none transition duration-150 ease-in-out">
+        {{ button_text }}
+    </button>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const numGamesSlider = document.getElementById('num-games');
+        const numGamesValue = document.getElementById('num-games-value');
+        
+        // Update number of games value when slider changes
+        if (numGamesSlider && numGamesValue) {
+            numGamesSlider.addEventListener('input', function() {
+                numGamesValue.textContent = this.value;
+            });
+        }
+    });
+</script>
+{% endmacro %}

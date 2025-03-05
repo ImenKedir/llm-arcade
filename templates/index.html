@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-retro-card rounded-lg shadow-md overflow-hidden p-6 pixel-border">
+        <div class="space-y-6">
+            <!-- Blackjack Card -->
+            <div class="bg-retro-bg border-2 border-retro-accent rounded-lg p-6 shadow-lg text-retro-text scanlines">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div class="mb-4 md:mb-0 md:mr-6">
+                        <h2 class="text-2xl font-pixel mb-3 text-retro-header">BLACKJACK</h2>
+                        <p class="text-sm md:text-base font-retro">Play the classic card game against the dealer. Try to get as close to 21 as possible without going over!</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <a href="/blackjack/" class="inline-block px-6 py-3 bg-retro-header text-white font-pixel rounded-lg shadow-sm hover:bg-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent focus:ring-opacity-50 transition duration-150 ease-in-out text-sm">
+                            PLAY BLACKJACK
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Taxi Card -->
+            <div class="bg-retro-bg border-2 border-retro-accent rounded-lg p-6 shadow-lg text-retro-text scanlines">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div class="mb-4 md:mb-0 md:mr-6">
+                        <h2 class="text-2xl font-pixel mb-3 text-retro-header">TAXI</h2>
+                        <p class="text-sm md:text-base font-retro">Navigate a taxi through a grid world to pick up and drop off passengers at their destinations.</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <a href="/taxi/" class="inline-block px-6 py-3 bg-retro-header text-white font-pixel rounded-lg shadow-sm hover:bg-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent focus:ring-opacity-50 transition duration-150 ease-in-out text-sm">
+                            PLAY TAXI
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cliff Walking Card -->
+            <div class="bg-retro-bg border-2 border-retro-accent rounded-lg p-6 shadow-lg text-retro-text scanlines">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div class="mb-4 md:mb-0 md:mr-6">
+                        <h2 class="text-2xl font-pixel mb-3 text-retro-header">CLIFF WALKING</h2>
+                        <p class="text-sm md:text-base font-retro">Navigate an agent from start to goal while avoiding falling off the cliff. A classic reinforcement learning challenge!</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <a href="/cliff_walking/" class="inline-block px-6 py-3 bg-retro-header text-white font-pixel rounded-lg shadow-sm hover:bg-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent focus:ring-opacity-50 transition duration-150 ease-in-out text-sm">
+                            PLAY CLIFF WALKING
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Frozen Lake Card -->
+            <div class="bg-retro-bg border-2 border-retro-accent rounded-lg p-6 shadow-lg text-retro-text scanlines">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div class="mb-4 md:mb-0 md:mr-6">
+                        <h2 class="text-2xl font-pixel mb-3 text-retro-header">FROZEN LAKE</h2>
+                        <p class="text-sm md:text-base font-retro">Navigate across a frozen lake from start to goal while avoiding holes. Be careful - it's slippery!</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <a href="/frozen_lake/" class="inline-block px-6 py-3 bg-retro-header text-white font-pixel rounded-lg shadow-sm hover:bg-retro-accent focus:outline-none focus:ring-2 focus:ring-retro-accent focus:ring-opacity-50 transition duration-150 ease-in-out text-sm">
+                            PLAY FROZEN LAKE
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

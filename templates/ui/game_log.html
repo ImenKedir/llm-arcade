@@ -1,0 +1,30 @@
+{% macro game_log() %}
+<div class="mt-6 bg-retro-bg border-2 border-retro-accent rounded-lg p-4 scanlines">
+    <h3 class="text-lg font-pixel mb-3 text-retro-accent">GAME LOG</h3>
+    <div id="game-log" class="bg-white border-2 border-black rounded-none p-4 h-48 overflow-y-auto text-sm font-retro">
+        <div class="text-retro-text">Game log will appear here...</div>
+    </div>
+</div>
+
+<script>
+    // Function to add log entry - can be called from the main game script
+    function addLogEntry(message, type = 'info') {
+        const gameLog = document.getElementById('game-log');
+        if (!gameLog) return;
+        
+        const stepCount = document.getElementById('step-count');
+        const stepText = stepCount ? `[Step ${stepCount.textContent}] ` : '';
+        
+        const entry = document.createElement('div');
+        entry.className = `mb-1 ${
+            type === 'success' ? 'text-retro-link' : 
+            type === 'error' ? 'text-retro-header' : 
+            type === 'draw' ? 'text-retro-text' : 
+            'text-retro-text'
+        }`;
+        entry.textContent = `${stepText}${message}`;
+        gameLog.appendChild(entry);
+        gameLog.scrollTop = gameLog.scrollHeight;
+    }
+</script>
+{% endmacro %}

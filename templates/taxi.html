@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block content %}
+{# Import UI components #}
+{% from "ui/game_controls.html" import game_controls %}
+{% from "ui/game_stats.html" import game_stats %}
+{% from "ui/game_log.html" import game_log %}
+{% from "ui/llm_reasoning.html" import llm_reasoning %}
+{% from "ui/styles.html" import game_styles %}
+
+<div class="max-w-4xl mx-auto">
+    <div class="bg-retro-card rounded-lg shadow-md overflow-hidden p-6 pixel-border">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-pixel text-retro-header">TAXI</h2>
+            <a href="https://gymnasium.farama.org/environments/toy_text/taxi/" class="text-retro-link hover:text-retro-accent flex items-center font-retro" target="_blank">
+                <span>View Gymnasium Docs</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+            </a>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Game Display -->
+            <div class="bg-retro-bg border-2 border-retro-accent rounded-lg p-4 scanlines">
+                <h3 class="text-lg font-pixel mb-3 text-retro-header">GAME STATE</h3>
+                
+                <!-- Taxi Grid -->
+                <div id="taxi-grid" class="mb-6 bg-black rounded-lg p-4 shadow-inner font-mono text-sm whitespace-pre text-retro-accent border-2 border-retro-header">
+                    <div class="animate-pulse">Loading taxi environment...</div>
+                </div>
+                
+                <!-- Game Info -->
+                <div id="game-info" class="grid grid-cols-2 gap-2 text-sm font-retro">
+                    <div class="font-pixel text-retro-header">PASSENGER:</div>
+                    <div id="passenger-location">-</div>
+                    
+                    <div class="font-pixel text-retro-header">DESTINATION:</div>
+                    <div id="destination">-</div>
+                    
+                    <div class="font-pixel text-retro-header">LAST ACTION:</div>
+                    <div id="last-action">-</div>
+                    
+                    <div class="font-pixel text-retro-header">STATUS:</div>
+                    <div id="status" class="font-medium">Waiting to start</div>
+                    
+                    <div class="font-pixel text-retro-header">GAME:</div>
+                    <div id="game-counter">0 / 0</div>
+                </div>
+                
+                <!-- LLM Reasoning Component -->
+                {{ llm_reasoning() }}
+            </div>
+            
+            <!-- Game Stats -->
+            <div class="bg-retro-bg border-2 border-retro-accent rounded-lg p-4 scanlines">
+                {{ game_stats(show_draws=false) }}
+                
+                <!-- Game Controls Component -->
+                {{ game_controls(num_games=10, min_games=1, max_games=100, button_text="START STREAMING") }}
+            </div>
+        </div>
+        
+        <!-- Game Log Component -->
+        {{ game_log() }}
+    </div>
+</div>
+
+<!-- Game Styles Component -->
+{{ game_styles() }}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Elements
+        const streamButton = document.getElementById('stream-button');
+        const stepCount = document.getElementById('step-count');
+        const gamesCompleted = document.getElementById('games-completed');
+        const successCount = document.getElementById('success-count');
+        const failureCount = document.getElementById('failure-count');
+        const taxiGrid = document.getElementById('taxi-grid');
+        const passengerLocation = document.getElementById('passenger-location');
+        const destination = document.getElementById('destination');
+        const lastAction = document.getElementById('last-action');
+        const status = document.getElementById('status');
+        const gameCounter = document.getElementById('game-counter');
+        const useTestModeToggle = document.getElementById('use-test-mode');
+        const llmReasoning = document.getElementById('llm-reasoning');
+        
+        // Track stats
+        let stats = {
+            successes: 0,
+            failures: 0,
+            total: 0
+        };
+        
+        let eventSource = null;
+        
+        // Function to start streaming
+        function startStreaming() {
+            // Reset stats
+            stats = {
+                successes: 0,
+                failures: 0,
+                total: 0
+            };
+            
+            // Reset UI elements
+            stepCount.textContent = '0';
+            gamesCompleted.textContent = '0';
+            successCount.textContent = '0';
+            failureCount.textContent = '0';
+            taxiGrid.innerHTML = '<div class="animate-pulse">Loading taxi environment...</div>';
+            passengerLocation.textContent = '-';
+            destination.textContent = '-';
+            lastAction.textContent = '-';
+            status.textContent = 'Starting...';
+            status.className = 'font-medium';
+            
+            // Clear game log
+            const gameLog = document.getElementById('game-log');
+            gameLog.innerHTML = '';
+            addLogEntry('Starting new game session...', 'info');
+            
+            // Close existing event source if any
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            // Get number of games
+            const numGames = document.getElementById('num-games').value;
+            // Get test mode
+            const useTestMode = document.getElementById('use-test-mode').checked;
+            
+            // Update button state
+            streamButton.disabled = true;
+            streamButton.textContent = 'RUNNING...';
+            streamButton.classList.add('opacity-50');
+            
+            // Create new event source
+            const url = `/taxi/stream?num_games=${numGames}&test=${useTestMode}`;
+            eventSource = new EventSource(url);
+            
+            // Event listeners
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                updateGameState(data);
+            };
+            
+            eventSource.onerror = function(error) {
+                console.error('EventSource error:', error);
+                addLogEntry('Error in game stream. Check console for details.', 'error');
+                eventSource.close();
+                streamButton.disabled = false;
+                streamButton.textContent = 'START STREAMING';
+                streamButton.classList.remove('opacity-50');
+            };
+            
+            eventSource.addEventListener('close', function(event) {
+                eventSource.close();
+                streamButton.disabled = false;
+                streamButton.textContent = 'START STREAMING';
+                streamButton.classList.remove('opacity-50');
+                addLogEntry('Game session completed.', 'success');
+            });
+        }
+        
+        // Function to update game state
+        function updateGameState(data) {
+            // Check if data contains an error
+            if (data.error) {
+                addLogEntry(`Error: ${data.error}`, 'error');
+                return;
+            }
+            
+            // Check if this is a stats update
+            if (data.stats) {
+                // Update game statistics from stats object
+                if (data.stats.games_played !== undefined) {
+                    gamesCompleted.textContent = data.stats.games_played.toString();
+                }
+                if (data.stats.successes !== undefined) {
+                    successCount.textContent = data.stats.successes.toString();
+                }
+                if (data.stats.failures !== undefined) {
+                    failureCount.textContent = data.stats.failures.toString();
+                }
+                
+                // Check if this is a completion message
+                if (data.completed) {
+                    addLogEntry('All games completed!', 'success');
+                }
+                
+                return;
+            }
+            
+            // Update step count if available
+            if (data.step_count !== undefined) {
+                stepCount.textContent = data.step_count.toString();
+            }
+            
+            // Update game counter if available
+            if (data.game_number !== undefined && data.total_games !== undefined) {
+                gameCounter.textContent = `${data.game_number} / ${data.total_games}`;
+            }
+            
+            // Update grid
+            if (data.grid) {
+                taxiGrid.innerHTML = '';
+                const pre = document.createElement('pre');
+                pre.textContent = data.grid;
+                taxiGrid.appendChild(pre);
+            }
+            
+            // Update passenger and destination
+            if (data.passenger_idx !== undefined) {
+                const locations = ['R', 'G', 'Y', 'B', 'In Taxi'];
+                passengerLocation.textContent = locations[data.passenger_idx];
+            }
+            
+            if (data.destination_idx !== undefined) {
+                const locations = ['R', 'G', 'Y', 'B'];
+                destination.textContent = locations[data.destination_idx];
+            }
+            
+            // Update last action
+            if (data.action !== undefined) {
+                lastAction.textContent = data.action;
+            }
+            
+            // Update status
+            if (data.terminated !== undefined) {
+                if (data.terminated) {
+                    if (data.reward > 0) {
+                        status.textContent = 'Success!';
+                        status.className = 'font-medium text-retro-link';
+                        addLogEntry('Taxi successfully delivered passenger!', 'success');
+                    } else {
+                        status.textContent = 'Failed!';
+                        status.className = 'font-medium text-retro-header';
+                        addLogEntry('Taxi failed to deliver passenger.', 'error');
+                    }
+                } else {
+                    status.textContent = 'In Progress';
+                    status.className = 'font-medium';
+                }
+            }
+            
+            // Update LLM reasoning if available
+            if (data.llm_reasoning) {
+                llmReasoning.innerHTML = '';
+                const reasoningText = document.createElement('div');
+                reasoningText.textContent = data.llm_reasoning;
+                llmReasoning.appendChild(reasoningText);
+            }
+            
+            // Add log entry for action if available
+            if (data.action !== undefined && !data.terminated) {
+                addLogEntry(`Action: ${data.action}`, 'info');
+            }
+        }
+        
+        // Event listeners
+        streamButton.addEventListener('click', startStreaming);
+    });
+</script>
+{% endblock %}
